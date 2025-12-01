@@ -38,18 +38,11 @@ Update file ke GitHub:
     Hanya berlaku jika posisi file python satu level dengan envi
 
     Aktifkan virtual environment:
-        • Windows PowerShell: .venv\Scripts\Activate.ps1
         • Windows Bash: source .venv/Scripts/activate
     Cek virtual environment sudah aktif:
         Windows Bash: which python
-        Windows PowerShell: Get-Command python
     Tambahkan file .gitignore di root folder, ketik: 
         .venv/
-    Install FastAPI: 
-        pip install "fastapi[standard]"
-    Cek FastAPI sudah terinstal: 
-        pip show fastapi
-        #paling penting ada version fastapinya
 
 Bentuk file bahasa python, misal main.py
 Jalankan server (development mode): 
@@ -68,9 +61,12 @@ cd /c/Users/Asus/kapsel-analitika-data/kapsel-andat-UAS/app
 pip install -r requirements.txt
 python -m app.init_db --email admin@example.com --name "Admin" --password admin123
 
+pip install pandas
+
 source .venv/Scripts/activate
 which python
 pip install "fastapi[standard]"
 pip show fastapi
 pip install sqlalchemy pymysql python-dotenv
+
 fastapi dev main.py

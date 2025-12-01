@@ -9,7 +9,7 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Learning Activity Monitoring API")
 
-app.include_router(account.routers)
+app.include_router(createAccount.router)
 
 @app.get("/")
 def read_root() -> dict[str, str]:
@@ -27,9 +27,9 @@ def read_root():
 
 def prepare_data():
     folder_path = 'C:/Users/Asus/Documents/KULIAH/SEMESTER/Kapita Selekta Analitika Data/UAS' 
-    file_awal = student_performance_large_dataset.csv
-    file_data_students = data_students.csv
-    file_account = account.csv
+    file_awal = "student_performance_large_dataset.csv"
+    file_data_students = "data_students.csv"
+    file_account = "accounts.csv"
 
     if os.path.exists(os.path.join(folder_path,file_data_students)) and os.path.exists(os.path.join(folder_path,file_account)):
         print("✅ Data sudah ada. Proses data dilewati.")

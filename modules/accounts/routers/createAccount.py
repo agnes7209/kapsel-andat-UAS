@@ -9,9 +9,9 @@ router = APIRouter()
 @router.post("/accounts/", response_model=ResponseModel)
 def create_account(account: Account, db: Session = Depends(get_db)):
     new_account = AccountModel(
-        Account_ID = account.Account_ID 
-        Age = account.Age
-        Gender = account.Gender
+        Account_ID = account.Account_ID, 
+        Age = account.Age,
+        Gender = account.Gender,
         Role = account.Role
     )
     db.add(new_account)
