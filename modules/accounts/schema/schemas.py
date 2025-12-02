@@ -20,3 +20,9 @@ class ResponseModel(BaseModel):
     success: bool
     message: str
     data: AccountResponse
+
+class AccountUpdate(BaseModel):
+    Account_ID: str
+    Age: int
+    Gender: str
+    Role: str

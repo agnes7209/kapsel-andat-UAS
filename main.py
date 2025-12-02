@@ -10,6 +10,8 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(title="Learning Activity Monitoring API")
 
 app.include_router(createAccount.router)
+app.include_router(deleteAccount.router)
+app.include_router(updateAccount.router)
 
 @app.get("/")
 def read_root() -> dict[str, str]:
