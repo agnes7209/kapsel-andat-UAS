@@ -12,10 +12,10 @@ app = FastAPI(title="Learning Activity Monitoring API")
 app.include_router(createAccount.router)
 app.include_router(deleteAccount.router)
 app.include_router(updateAccount.router)
+app.include_router(readAccount.router)
 
-@app.get("/")
-def read_root() -> dict[str, str]:
-    return {"message": "Learning Activity Monitoring API is running"}
+# app.include_router(createQuizQuestion.router)
+
 
 @app.on_event("startup")
 def startup_event():
@@ -23,9 +23,6 @@ def startup_event():
     prepare_data() # Panggil fungsi pra-pemrosesan data Anda di sini
     print("--- Pra-pemrosesan Data Selesai. Aplikasi Siap. ---")
 
-@app.get("/")
-def read_root():
-    return {"message": "Server berjalan dan data sudah disiapkan."}
 
 def prepare_data():
     folder_path = 'C:/Users/Asus/Documents/KULIAH/SEMESTER/Kapita Selekta Analitika Data/UAS' 
@@ -74,3 +71,5 @@ def prepare_data():
     file_name_account = 'accounts.csv'
     data_account.to_csv(os.path.join(folder_path, file_account), index=False)
     print(f"File '{file_account}' berhasil dibuat.")
+
+    #UPDATE KE SQL YANG BELUM
