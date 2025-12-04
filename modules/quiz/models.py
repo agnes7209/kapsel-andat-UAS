@@ -6,5 +6,6 @@ class QuizQuestionsModel(Base):
 
     Quiz_ID = Column(String(20), primary_key=True, index=True)
     Course_ID = Column(String(20), nullable=False)
+    PDF_Name = Column(String(225), nullable=False)
     Link_Question = Column(String(225), nullable=False)
   
