@@ -64,9 +64,11 @@ python -m app.init_db --email admin@example.com --name "Admin" --password admin1
 pip install pandas
 
 source .venv/Scripts/activate
+
 which python
 pip install "fastapi[standard]"
 pip show fastapi
 pip install sqlalchemy pymysql python-dotenv
+pip install cryptography
 
 fastapi dev main.py
