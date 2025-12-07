@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session 
 from database import get_db
 from modules.quiz.models import QuizQuestionsModel
-from modules.quiz.schema.schemas import QuizQuestion, ResponseModel
+from modules.quiz.schema.schemas import QuizQuestion, ResponseQuestionModel
 import urllib.parse
 import httpx 
 import logging
@@ -78,7 +78,7 @@ async def check_pdf_exists_in_github(PDF_Name: str) -> tuple[bool, str]:
     logger.error(f"File '{PDF_Name}' tidak ditemukan di semua lokasi yang dicoba")
     return False, ""
 
-@router.post("/quizquestions/", response_model=ResponseModel, status_code=201)
+@router.post("/quizquestions/", response_model=ResponseQuestionModel, status_code=201)
 async def create_quizquestion(quizquestion: QuizQuestion, db: Session = Depends(get_db)):
     # Cek apakah Quiz_ID sudah ada
     existing_quiz = db.query(QuizQuestionsModel).filter(QuizQuestionsModel.Quiz_ID == quizquestion.Quiz_ID).first()

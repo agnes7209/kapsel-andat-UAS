@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from database import Base, engine, SessionLocal
 from modules.accounts.routers import createAccount, deleteAccount, readAccount, updateAccount
-from modules.quiz.routers import createQuizQuestion, deleteQuizQuestion, readQuizQuestion
+from modules.quiz.routers import createQuizQuestion, deleteQuizQuestion, readQuizQuestion, createQuizAnswer
 import pandas as pd
 import os
 
@@ -19,6 +19,7 @@ app.include_router(readAccount.router)
 app.include_router(createQuizQuestion.router)
 app.include_router(deleteQuizQuestion.router)
 app.include_router(readQuizQuestion.router)
+app.include_router(createQuizAnswer.router)
 
 @app.on_event("startup")
 def startup_event():
