@@ -6,7 +6,7 @@ from modules.accounts.schema.schemas import Account, AccountUpdate, ResponseMode
 
 router =APIRouter()
 
-@router.put("/accounts/{Account_ID}/{code}", response_model=ResponseModel)
+@router.put("/accounts/{Account_ID}/{code}/", response_model=ResponseModel)
 def update_account(Account_ID: str, code:str, updated_account: Account, db: Session = Depends(get_db)):
     account = db.query(AccountModel).filter(AccountModel.Account_ID == Account_ID).first()
 

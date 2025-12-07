@@ -7,7 +7,7 @@ from modules.quiz.schema.schemas import QuizQuestion, ResponseModel
 
 router = APIRouter()
 
-@router.delete("/quizquestions/{Quiz_ID}")
+@router.delete("/quizquestions/{Quiz_ID}/")
 def delete_quizquestion(Quiz_ID: str, db: Session = Depends(get_db)):
     quizquestion = db.query(QuizQuestionsModel).filter(QuizQuestionsModel.Quiz_ID == Quiz_ID).first()
 

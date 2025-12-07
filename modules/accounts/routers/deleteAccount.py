@@ -6,7 +6,7 @@ from modules.accounts.schema.schemas import ResponseModel
 
 router = APIRouter()
 
-@router.delete("/accounts/{Account_ID}")
+@router.delete("/accounts/{Account_ID}/")
 def delete_account(Account_ID: str, db: Session = Depends(get_db)):
     account = db.query(AccountModel).filter(AccountModel.Account_ID == Account_ID).first()
 

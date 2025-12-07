@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from database import Base, engine, SessionLocal
 from modules.accounts.routers import createAccount, deleteAccount, readAccount, updateAccount
-from modules.quiz.routers import createQuizQuestion, deleteQuizQuestion
+from modules.quiz.routers import createQuizQuestion, deleteQuizQuestion, readQuizQuestion
 import pandas as pd
 import os
 
@@ -18,14 +18,15 @@ app.include_router(readAccount.router)
 
 app.include_router(createQuizQuestion.router)
 app.include_router(deleteQuizQuestion.router)
+app.include_router(readQuizQuestion.router)
 
 @app.on_event("startup")
 def startup_event():
     print("--- Memulai Pra-pemrosesan Data... ---")
     prepare_data() # Panggil fungsi pra-pemrosesan data Anda di sini
     print("--- Pra-pemrosesan Data Selesai. Aplikasi Siap. ---")
-    print("--- Membuat dan Mengisi Database... ---")
-    setup_database() # Panggil fungsi setup database
+    # print("--- Membuat dan Mengisi Database... ---")
+    # setup_database() # Panggil fungsi setup database
     print("--- Aplikasi Siap. ---")
 
 # Definisikan variabel global untuk path
