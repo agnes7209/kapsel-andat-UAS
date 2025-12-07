@@ -58,9 +58,9 @@ Jalankan server (development mode):
 #Open folder
 cd /c/Users/Asus/kapsel-analitika-data/kapsel-andat-UAS/app
 
-pip install -r requirements.txt
 python -m app.init_db --email admin@example.com --name "Admin" --password admin123
 
+pip install -r requirements.txt
 pip install pandas
 
 source .venv/Scripts/activate
