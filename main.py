@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from database import Base, engine, SessionLocal
 from modules.accounts.routers import createAccount, deleteAccount, readAccount, updateAccount
 from modules.quiz.routers import createQuizQuestion, deleteQuizQuestion, readQuizQuestion, createQuizAnswer
+from modules.students.routers import createCalculateGrade
 import pandas as pd
 import os
 
@@ -20,6 +21,8 @@ app.include_router(createQuizQuestion.router)
 app.include_router(deleteQuizQuestion.router)
 app.include_router(readQuizQuestion.router)
 app.include_router(createQuizAnswer.router)
+
+app.include_router(createCalculateGrade.router)
 
 @app.on_event("startup")
 def startup_event():
