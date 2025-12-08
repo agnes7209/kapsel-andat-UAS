@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Float, Text
+from sqlalchemy import Column, Integer, String, DateTime
 from datetime import datetime
 from database import Base
 
@@ -13,8 +13,10 @@ class QuizQuestionsModel(Base):
 class QuizAnswersModel(Base):
     __tablename__= "log_quizanswer"
 
-    Log_Timestamp = Column(datetime, primary_key=True, index=True)
+    Answer_ID = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    Log_Timestamp = Column(DateTime, default=datetime.utcnow)
     Student_ID = Column(String(10), nullable=False)
     Course_ID = Column(String(10), nullable=False)
-    Question_Number = Column(int, nullable=False)
-    Answer = Column(String(22), nullable=False)
+    Quiz_ID = Column(String(10), nullable=False)
+    Question_Number = Column(Integer, nullable=False)
+    Answer = Column(String(255), nullable=True)

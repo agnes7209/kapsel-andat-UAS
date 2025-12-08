@@ -1,3 +1,4 @@
+from datetime import datetime
 from pydantic import BaseModel
 
 class QuizQuestion(BaseModel):
@@ -27,12 +28,13 @@ class QuizAnswer(BaseModel):
     # Log_Timestamp tidak perlu di input, karena di-generate otomatis
 
 class QuizAnswerResponse(BaseModel):
+    Answer_ID: int
     Student_ID: str
     Course_ID: str
     Quiz_ID: str
     Question_Number: int
     Answer: str
-    Timestamp: str
+    Timestamp: datetime
 
 class ResponseAnswerModel(BaseModel):
     success: bool
