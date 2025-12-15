@@ -1,37 +1,38 @@
-from sqlalchemy import Column, Integer, String, ForeignKey, Text
-from sqlalchemy.orm import relationship
+from sqlalchemy import Column, Integer, String, ForeignKey, Text, Boolean, event
+from sqlalchemy.orm import relationship, Session
 from modules.quiz.models import QuizAnswersModel
-from database import Base
+from database import Base, engine
 from sqlalchemy import and_
+from typing import Dict, List
 
 class StudentModel(Base):
     __tablename__ = "data_students"
     
     Student_ID = Column(String(6), primary_key=True, index=True)
-    Age = Column(Integer, nullable=False)
-    Gender = Column(String(10), nullable=False)
-    Study_Hours_per_Week = Column(Integer, nullable=False)
-    Online_Courses_Completed = Column(Integer, nullable=False)
-    Participation_in_Discussions = Column(String(3), nullable=False)
-    Assignment_Completion_Rate_percent = Column(Integer, nullable=False)
-    Exam_Score_percent = Column(Integer, nullable=False)
-    Attendance_Rate_percent = Column(Integer, nullable=False)
-    Final_Grade = Column(String(2), nullable=False)
+    Study_Hours_per_Week = Column(Integer)
+    Participation_in_Discussions = Column(String(3))
+    Attendance_Rate_percent = Column(Integer)
+    Quiz_Exam_Completion_Rate = Column(Integer)
+    Final_Grade = Column(Integer)
 
 # Relationship to StudentGradeModel
-    grades = relationship("StudentGradeModel", back_populates="student")
+    # grades = relationship("StudentGradeModel", back_populates="student")
 
-class StudentGradeModel(Base):
-    __tablename__= "student_grade"
+# class StudentGradeModel(Base):
+#     __tablename__= "student_grade"
 
-    Grade_ID = Column(Integer, primary_key=True, autoincrement=True, index=True)
-    Student_ID = Column(String(10), ForeignKey('data_students.Student_ID'), nullable=False)
-    Quiz_ID = Column(String(20), nullable=True)
-    Course_ID = Column(String(10), nullable=True)
-    Grade = Column(Integer, nullable=True)
+#     Grade_ID = Column(Integer, primary_key=True, autoincrement=True, index=True)
+#     Student_ID = Column(String(10), ForeignKey('data_students.Student_ID'), nullable=False)
+#     Quiz_ID = Column(String(20), nullable=True)
+#     Course_ID = Column(String(10), nullable=True)
+#     Grade = Column(Integer, nullable=True)
+#     Is_Calculated = Column(Boolean, default=False)
 
-    # Relationship to StudentModel
-    student = relationship("StudentModel", back_populates="grades")
+#     # Relationship to StudentModel
+#     student = relationship("StudentModel", back_populates="grades")
+#      __table_args__ = (
+#         {'sqlite_autoincrement': True},
+#     )
 
 # Model untuk solusi Q1
 class SolutionQ1(Base):
@@ -39,6 +40,7 @@ class SolutionQ1(Base):
     
     Number = Column(Integer, primary_key=True)
     Solution = Column(Text, nullable=False)
+    Quiz_ID = Column(String(10), default="Q1")
 
 # Model untuk solusi Q2
 class SolutionQ2(Base):
@@ -46,6 +48,7 @@ class SolutionQ2(Base):
     
     Number = Column(Integer, primary_key=True)
     Solution = Column(Text, nullable=False)
+    Quiz_ID = Column(String(10), default="Q2")
 
 # Model untuk solusi E1
 class SolutionE1(Base):
@@ -53,7 +56,7 @@ class SolutionE1(Base):
     
     Number = Column(Integer, primary_key=True)
     Solution = Column(Text, nullable=False)
-
+    Quiz_ID = Column(String(10), default="E1")
 
 class QuizSolutionModel(Base):
     """Model untuk tabel solusi quiz"""
@@ -62,7 +65,8 @@ class QuizSolutionModel(Base):
     Solution_ID = Column(Integer, primary_key=True, autoincrement=True)
     Quiz_ID = Column(String(20), nullable=False)
     Question_Number = Column(Integer, nullable=False)
-    Solution = Column(String(255), nullable=False)
+    Correct_Answer = Column(String(255), nullable=False)
+    Solution_Text = Column(Text, nullable=True)  # Untuk penjelasan
     
 
 # Method untuk menghitung grade otomatis
@@ -194,6 +198,9 @@ def calculate_grade(db_session, student_id, quiz_id, course_id):
         traceback.print_exc()
         db_session.rollback()
         return 0
+
+
+
 
 def calculate_grades_for_all_students(db_session, quiz_id, course_id):
     """

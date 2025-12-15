@@ -1,36 +1,38 @@
 from fastapi import FastAPI
 from database import Base, engine, SessionLocal
-from modules.accounts.routers import createAccount, deleteAccount, readAccount, updateAccount
-from modules.quiz.routers import createQuizQuestion, deleteQuizQuestion, readQuizQuestion, createQuizAnswer
-from modules.students.routers import createCalculateGrade
+# from modules.accounts.routers import createAccount, deleteAccount, readAccount, updateAccount
+# from modules.quiz.routers import createQuizQuestion, deleteQuizQuestion, readQuizQuestion, createQuizAnswer
+# from modules.students.routers import createCalculateGrade
 import pandas as pd
 import os
+from tqdm import tqdm 
 
 # Import model di sini untuk menghindari circular import
 from modules.students.models import StudentModel
 from modules.accounts.models import AccountModel
 
+
 app = FastAPI(title="Learning Activity Monitoring API")
 
-app.include_router(createAccount.router)
-app.include_router(deleteAccount.router)
-app.include_router(updateAccount.router)
-app.include_router(readAccount.router)
+# app.include_router(createAccount.router)
+# app.include_router(deleteAccount.router)
+# app.include_router(updateAccount.router)
+# app.include_router(readAccount.router)
 
-app.include_router(createQuizQuestion.router)
-app.include_router(deleteQuizQuestion.router)
-app.include_router(readQuizQuestion.router)
-app.include_router(createQuizAnswer.router)
+# app.include_router(createQuizQuestion.router)
+# app.include_router(deleteQuizQuestion.router)
+# app.include_router(readQuizQuestion.router)
+# app.include_router(createQuizAnswer.router)
 
-app.include_router(createCalculateGrade.router)
+# app.include_router(createCalculateGrade.router)
 
 @app.on_event("startup")
 def startup_event():
     print("--- Memulai Pra-pemrosesan Data... ---")
     prepare_data() # Panggil fungsi pra-pemrosesan data Anda di sini
     print("--- Pra-pemrosesan Data Selesai. Aplikasi Siap. ---")
-    # print("--- Membuat dan Mengisi Database... ---")
-    # setup_database() # Panggil fungsi setup database
+    print("--- Membuat dan Mengisi Database... ---")
+    setup_database() # Panggil fungsi setup database
     print("--- Aplikasi Siap. ---")
 
 # Definisikan variabel global untuk path
@@ -62,122 +64,169 @@ def prepare_data():
         return
 
     # --- Persiapan data_student.csv ---
-    data_student = data.drop(['Preferred_Learning_Style',
-                              'Use_of_Educational_Tech',
-                              'Self_Reported_Stress_Level',
-                              'Time_Spent_on_Social_Media (hours/week)',
-                              'Sleep_Hours_per_Night'],
+    data_student = data.drop(['Age',
+                            'Preferred_Learning_Style',
+                            'Online_Courses_Completed',
+                            'Assignment_Completion_Rate (%)',
+                            'Exam_Score (%)',
+                            'Use_of_Educational_Tech',
+                            'Self_Reported_Stress_Level',
+                            'Time_Spent_on_Social_Media (hours/week)',
+                            'Sleep_Hours_per_Night',
+                            'Final_Grade'],
                              axis=1)
-
+    data_student = data_student.rename(columns={'Attendance_Rate (%)': 'Attendance_Rate_percent'})
     data_student = data_student[data_student['Gender'] != 'Other']
+    data_student = data_student.drop('Gender', axis=1)
     data_student = data_student.drop(index=data_student.index[200:]) 
+
+    # Tambahkan kolom kosong untuk Quiz_Exam_Completion_Rate dan Final Grade
+    data_student['Quiz_Exam_Completion_Rate'] = 0  
+    data_student['Final_Grade'] = 0 
 
     file_name_student = 'data_student.csv'
     data_student.to_csv(os.path.join(folder_path, file_data_students), index=False)
     print(f"File '{file_data_students}' berhasil dibuat.")
 
     # --- Persiapan accounts.csv ---
-    data_account = data_student.drop(['Study_Hours_per_Week',
-                                      'Online_Courses_Completed',
-                                      'Participation_in_Discussions',
-                                      'Assignment_Completion_Rate (%)',
-                                      'Exam_Score (%)',
-                                      'Attendance_Rate (%)',
-                                      'Final_Grade'],
-                                     axis=1)
+    data_account = data.drop(['Study_Hours_per_Week',
+                            'Participation_in_Discussions',
+                            'Attendance_Rate (%)',
+                            'Preferred_Learning_Style',
+                            'Online_Courses_Completed',
+                            'Assignment_Completion_Rate (%)',
+                            'Exam_Score (%)',
+                            'Use_of_Educational_Tech',
+                            'Self_Reported_Stress_Level',
+                            'Time_Spent_on_Social_Media (hours/week)',
+                            'Sleep_Hours_per_Night',
+                            'Final_Grade'],
+                             axis=1)
     data_account['Role'] = 'student'
+    data_account= data_account[data_account['Gender'] != 'Other']
     data_account = data_account.rename(columns={'Student_ID': 'Account_ID'})
+    data_account = data_account.drop(index=data_account.index[200:]) 
     
     file_name_account = 'accounts.csv'
     data_account.to_csv(os.path.join(folder_path, file_account), index=False)
     print(f"File '{file_account}' berhasil dibuat.")
 
-# def setup_database(): #Membuat tabel dan mengisi data dari CSV ke database
-#     print("--- Memulai Pembuatan Database SQL... ---")
-#     # Buat semua tabel yang didefinisikan dalam Base
-#     try:
-#         Base.metadata.create_all(bind=engine)
-#         print("✅ Tabel database berhasil dibuat/diperiksa.")
-#     except Exception as e:
-#         print(f"❌ Error membuat tabel: {e}")
-#         return
+def setup_database():
+    """Membuat tabel dan mengimpor data dari CSV ke database"""
+    print("--- Membuat tabel database... ---")
     
-#     # Path untuk file CSV
-#     path_data_students = os.path.join(folder_path, file_data_students)
-#     path_account = os.path.join(folder_path, file_account)
-
-#     db = SessionLocal()
+    # Tampilkan tabel yang akan dibuat
+    print(f"✅ Tabel yang akan dibuat: {Base.metadata.tables.keys()}")
     
-#     try:
-#         # Cek apakah tabel sudah berisi data
-#         student_count = db.query(StudentModel).count()
-#         account_count = db.query(AccountModel).count()
+    # Membuat semua tabel yang didefinisikan oleh Base
+    Base.metadata.create_all(bind=engine)
+    print("✅ Tabel berhasil dibuat/diperiksa")
+    
+    db = SessionLocal()
+    
+    try:
+        # 1. Impor data ke tabel accounts
+        print("⏳ Mengimpor data accounts ke database...")
+        accounts_path = os.path.join(folder_path, file_account)
         
-#         print(f"📊 Jumlah data di tabel students: {student_count}")
-#         print(f"📊 Jumlah data di tabel accounts: {account_count}")
-
-#         # Jika tabel kosong, isi dari CSV
-#         if student_count == 0 and os.path.exists(path_data_students):
-#             print("⏳ Mengisi tabel students dari CSV...")
-#             students_df = pd.read_csv(path_data_students)
-
-#             # Konversi ke dictionary untuk bulk insert
-#             students_data = students_df.to_dict(orient='records')
-
-#             # Bulk insert
-#             inserted_count = 0
-#             for data in students_data:
-#                 try:
-#                 # Konversi tipe data 
-#                     data['Student_ID'] = str(data['Student_ID'])
-#                     data['Age'] = int(data['Age'])
-#                     data['Gender'] = str(data['Gender'])
-#                     data['Study_Hours_per_Week'] = int(data['Study_Hours_per_Week'])
-#                     data['Online_Courses_Completed'] = int(data['Online_Courses_Completed'])
-#                     data['Participation_in_Discussions'] = str(data['Participation_in_Discussions'])
-#                     data['Assignment_Completion_Rate (%)'] = int(data['Assignment_Completion_Rate_percent'])
-#                     data['Exam_Score (%)'] = int(data['Exam_Score_percent'])
-#                     data['Attendance_Rate (%),Final_Grade'] = int(data['Attendance_Rate_percent'])
-
-#                     student = StudentModel(**data)
-#                     db.add(student)
-#                     inserted_count += 1
-#                 except Exception as e:
-#                     print(f"⚠️ Error memproses data student: {data.get('Student_ID', 'Unknown')} - {e}")
-#             db.commit()
-#             print(f"✅ Tabel students berhasil diisi dengan {inserted_count} data.")        
-        
-#         if account_count == 0 and os.path.exists(path_account):
-#             print("⏳ Mengisi tabel accounts dari CSV...")
-#             accounts_df = pd.read_csv(path_account)
+        if os.path.exists(accounts_path):
+            accounts_df = pd.read_csv(accounts_path)
+            print(f"📊 Data accounts dari CSV: {len(accounts_df)} baris")
+            print(f"📋 Kolom accounts: {list(accounts_df.columns)}")
             
-#             # Konversi ke dictionary untuk bulk insert
-#             accounts_data = accounts_df.to_dict(orient='records')
+            # Cek apakah tabel sudah ada data
+            existing_accounts = db.query(AccountModel).count()
             
-#             # Bulk insert
-#             inserted_accounts = 0
-#             for data in accounts_data:
-#                 try:
-#                     # Konversi tipe data
-#                     data['Account_ID'] = str(data['Account_ID'])
-#                     data['Age'] = int(data['Age'])
-#                     data['Gender'] = str(data['Gender'])
-#                     data['Role'] = str(data['Role'])
+            if existing_accounts == 0:
+                accounts_data = accounts_df.to_dict('records')
+                
+                # Debug: Tampilkan contoh data pertama
+                if accounts_data:
+                    print(f"📝 Contoh data accounts pertama: {accounts_data[0]}")
+                
+                # Masukkan data ke database
+                for record in tqdm(accounts_data, desc="Accounts"):
+                    try:
+                        account = AccountModel(
+                            Account_ID=str(record['Account_ID']),
+                            Age=int(record['Age']),
+                            Gender=str(record['Gender']),
+                            Role=str(record['Role'])
+                        )
+                        db.add(account)
+                    except Exception as e:
+                        print(f"❌ Error pada record {record}: {str(e)}")
+                        raise
+                
+                db.commit()
+                print(f"✅ {len(accounts_data)} data accounts berhasil diimpor")
+            else:
+                print(f"ℹ️  Tabel accounts sudah berisi {existing_accounts} data, dilewati")
+        else:
+            print(f"❌ File {file_account} tidak ditemukan di {accounts_path}")
         
-#                     account = AccountModel(**data)
-#                     db.add(account)
-#                     inserted_accounts += 1
-#                 except Exception as e:
-#                     print(f"⚠️ Error memproses data account: {data.get('Account_ID', 'Unknown')} - {e}")
-#             db.commit()
-#             print(f"✅ Tabel accounts berhasil diisi dengan {inserted_accounts} data.")
+        # 2. Impor data ke tabel students
+        print("\n⏳ Mengimpor data students ke database...")
+        students_path = os.path.join(folder_path, file_data_students)
         
-#         if student_count > 0 and account_count > 0:
-#             print("✅ Database sudah berisi data. Tidak ada data baru yang dimasukkan.")
+        if os.path.exists(students_path):
+            students_df = pd.read_csv(students_path)
+            print(f"📊 Data students dari CSV: {len(students_df)} baris")
+            print(f"📋 Kolom students: {list(students_df.columns)}")
             
-#     except Exception as e:
-#         db.rollback()
-#         print(f"❌ Error mengisi database: {e}")
-#     finally:
-#         db.close()
-
+            # Cek apakah tabel sudah ada data
+            existing_students = db.query(StudentModel).count()
+            
+            if existing_students == 0:
+                students_data = students_df.to_dict('records')
+                
+                # Debug: Tampilkan contoh data pertama
+                if students_data:
+                    print(f"📝 Contoh data students pertama: {students_data[0]}")
+                
+                # Masukkan data ke database
+                for record in tqdm(students_data, desc="Students"):
+                    try:
+                        # Konversi ke tipe data yang benar
+                        student = StudentModel(
+                            Student_ID=str(record['Student_ID']),
+                            Study_Hours_per_Week=int(record['Study_Hours_per_Week']),
+                            Participation_in_Discussions=str(record['Participation_in_Discussions']),
+                            Quiz_Exam_Completion_Rate=int(record['Quiz_Exam_Completion_Rate']),
+                            Attendance_Rate_percent=int(record['Attendance_Rate_percent']),
+                            Final_Grade=int(record['Final_Grade'])
+                        )
+                        db.add(student)
+                    except Exception as e:
+                        print(f"❌ Error pada record {record}: {str(e)}")
+                        raise
+                
+                db.commit()
+                print(f"✅ {len(students_data)} data students berhasil diimpor")
+            else:
+                print(f"ℹ️  Tabel students sudah berisi {existing_students} data, dilewati")
+        else:
+            print(f"❌ File {file_data_students} tidak ditemukan di {students_path}")
+        
+        # Verifikasi data yang sudah diimpor
+        print("\n✅ Verifikasi data di database:")
+        print(f"   - Total accounts: {db.query(AccountModel).count()}")
+        print(f"   - Total students: {db.query(StudentModel).count()}")
+        
+        # Tampilkan contoh data
+        print("\n📊 Contoh 3 data accounts:")
+        for account in db.query(AccountModel).limit(3).all():
+            print(f"   - {account.Account_ID}, Age: {account.Age}, Gender: {account.Gender}, Role: {account.Role}")
+        
+        print("\n📊 Contoh 3 data students:")
+        for student in db.query(StudentModel).limit(3).all():
+            print(f"   - {student.Student_ID}, Study Hours: {student.Study_Hours_per_Week}, Attendance: {student.Attendance_Rate_percent}%")
+    
+    except Exception as e:
+        db.rollback()
+        print(f"❌ Error saat mengimpor data: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        raise e
+    finally:
+        db.close()

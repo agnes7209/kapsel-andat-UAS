@@ -15,7 +15,7 @@ class QuizAnswersModel(Base):
 
     Answer_ID = Column(Integer, primary_key=True, autoincrement=True, index=True)
     Log_Timestamp = Column(DateTime, default=datetime.utcnow)
-    Student_ID = Column(String(10), nullable=False)
+    Student_ID = Column(String(6), nullable=False)
     Course_ID = Column(String(10), nullable=False)
     Quiz_ID = Column(String(10), nullable=False)
     Question_Number = Column(Integer, nullable=False)

@@ -70,5 +70,6 @@ pip install "fastapi[standard]"
 pip show fastapi
 pip install sqlalchemy pymysql python-dotenv
 pip install cryptography
+pip install pandas tqdm
 
 fastapi dev main.py

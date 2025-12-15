@@ -11,7 +11,7 @@ class RoleEnum(PyEnum):
 class AccountModel(Base):
     __tablename__= "accounts"
 
-    Account_ID = Column(String(20), primary_key=True, index=True)
+    Account_ID = Column(String(6), primary_key=True, index=True)
     Age = Column(Integer, nullable=False)
-    Gender = Column(String(20), nullable=False)
-    Role = Column(String(20), nullable=False)
+    Gender = Column(String(6), nullable=False)
+    Role = Column(String(225), nullable=False)
