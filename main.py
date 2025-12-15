@@ -6,9 +6,12 @@ import pandas as pd
 import os
 from tqdm import tqdm 
 
-# Import model di sini untuk menghindari circular import
+# Import model
 from modules.students.models import StudentModel, calculate_and_save_grades, update_student_grades
 from modules.accounts.models import AccountModel
+
+# Import fungsi seed
+from modules.quiz.seed_answers import seed_random_answers, clear_all_answers 
 
 app = FastAPI(title="Learning Activity Monitoring API")
 
@@ -25,14 +28,29 @@ app.include_router(createQuizAnswer.router)
 
 @app.on_event("startup")
 def startup_event():
-    print("--- Memulai Pra-pemrosesan Data... ---")
-    prepare_data() # Panggil fungsi pra-pemrosesan data Anda di sini
-    print("--- Pra-pemrosesan Data Selesai. Aplikasi Siap. ---")
-    print("--- Membuat dan Mengisi Database... ---")
-    setup_database() # Panggil fungsi setup database
-    print("--- Menghitung dan Memperbarui Nilai Mahasiswa... ---")
+    print("=" * 60)
+    print("🚀 SISTEM PEMANTAUAN PEMBELAJARAN ONLINE - STARTUP")
+    print("=" * 60)
+    
+    print("\n📋 Langkah 1: Pra-pemrosesan Data...")
+    prepare_data()
+    print("✅ Pra-pemrosesan Data Selesai")
+    
+    print("\n📋 Langkah 2: Membuat dan Mengisi Database...")
+    setup_database()
+    print("✅ Database Siap")
+    
+    print("\n📋 Langkah 3: Mengisi Jawaban Acak Mahasiswa...")
+    seed_random_answers()  # INI YANG DITAMBAHKAN
+    print("✅ Jawaban Acak Terisi")
+    
+    print("\n📋 Langkah 4: Menghitung dan Memperbarui Nilai...")
     calculate_and_update_all_grades()
-    print("--- Aplikasi Siap. ---")
+    print("✅ Perhitungan Nilai Selesai")
+    
+    print("\n" + "=" * 60)
+    print("✅ APLIKASI SIAP DIGUNAKAN")
+    print("=" * 60)
 
 # Definisikan variabel global untuk path
 folder_path = 'C:/Users/Asus/Documents/KULIAH/SEMESTER/Kapita Selekta Analitika Data/UAS' 
