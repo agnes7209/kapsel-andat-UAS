@@ -20,7 +20,8 @@ KAPSEL-ANDAT-UAS
                 updateQuiz.py
             schema
                 schemas.py
-            models.py       
+            models.py
+            seed_answers.py       
         students
             routers
             schema

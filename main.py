@@ -11,7 +11,8 @@ from modules.students.models import StudentModel, calculate_and_save_grades, upd
 from modules.accounts.models import AccountModel
 
 # Import fungsi seed
-from modules.quiz.seed_answers import seed_random_answers, clear_all_answers 
+# from modules.quiz.seed_answers import seed_smart_answers, clear_all_answers
+from modules.quiz.grade_fixer import fix_final_grades
 
 app = FastAPI(title="Learning Activity Monitoring API")
 
@@ -40,14 +41,14 @@ def startup_event():
     setup_database()
     print("✅ Database Siap")
     
-    print("\n📋 Langkah 3: Mengisi Jawaban Acak Mahasiswa...")
-    seed_random_answers()  # INI YANG DITAMBAHKAN
-    print("✅ Jawaban Acak Terisi")
-    
-    print("\n📋 Langkah 4: Menghitung dan Memperbarui Nilai...")
+    print("\n📋 Langkah 3: Menghitung dan Memperbarui Nilai...")
     calculate_and_update_all_grades()
     print("✅ Perhitungan Nilai Selesai")
-    
+
+    print("\n📋 Langkah Tambahan: Mengganti Jawaban Mahasiswa Dummy...")
+    fix_final_grades()
+    print("✅ Jawaban Sesuai syarat berhasil diganti")
+
     print("\n" + "=" * 60)
     print("✅ APLIKASI SIAP DIGUNAKAN")
     print("=" * 60)
@@ -273,3 +274,44 @@ def calculate_and_update_all_grades():
         traceback.print_exc()
     finally:
         db.close()
+
+def show_statistics():
+    """Menampilkan statistik data"""
+    from database import SessionLocal
+    from modules.quiz.models import QuizAnswersModel
+    from modules.students.models import StudentGradeModel
+    
+    db = SessionLocal()
+    try:
+        print("\n📊 STATISTIK DATA SISTEM:")
+        print("-" * 40)
+        print(f"Jumlah Mahasiswa: {db.query(StudentModel).count()}")
+        print(f"Jumlah Akun: {db.query(AccountModel).count()}")
+        print(f"Jumlah Jawaban Quiz: {db.query(QuizAnswersModel).count()}")
+        print(f"Jumlah Nilai yang Tercatat: {db.query(StudentGradeModel).count()}")
+        
+        # Cek distribusi nilai
+        grades = db.query(StudentModel.Final_Grade).all()
+        grade_count = {}
+        for (grade,) in grades:
+            grade_count[grade] = grade_count.get(grade, 0) + 1
+        
+        print(f"\n📈 Distribusi Nilai Akhir:")
+        for grade in sorted(grade_count.keys()):
+            count = grade_count[grade]
+            percentage = (count / len(grades)) * 100
+            print(f"  {grade}: {count} mahasiswa ({percentage:.1f}%)")
+        
+    except Exception as e:
+        print(f"❌ Error menampilkan statistik: {str(e)}")
+    finally:
+        db.close()
+
+# Panggil di akhir startup_event
+@app.on_event("startup")
+def startup_event():
+    # ... (kode sebelumnya) ...
+    
+    print("\n📋 Langkah 5: Menampilkan Statistik...")
+    show_statistics()  # Tambahkan ini
+    print("✅ Startup Selesai")
