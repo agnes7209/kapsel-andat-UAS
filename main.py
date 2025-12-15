@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from database import Base, engine, SessionLocal
-# from modules.accounts.routers import createAccount, deleteAccount, readAccount, updateAccount
-# from modules.quiz.routers import createQuizQuestion, deleteQuizQuestion, readQuizQuestion, createQuizAnswer
+from modules.accounts.routers import createAccount, deleteAccount, readAccount, updateAccount
+from modules.quiz.routers import createQuizQuestion, deleteQuizQuestion, readQuizQuestion, createQuizAnswer
 # from modules.students.routers import createCalculateGrade
 import pandas as pd
 import os
@@ -10,19 +10,19 @@ from tqdm import tqdm
 # Import model di sini untuk menghindari circular import
 from modules.students.models import StudentModel
 from modules.accounts.models import AccountModel
-
+from modules.students.models import update_all_students_grades, calculate_grades_for_all_students
 
 app = FastAPI(title="Learning Activity Monitoring API")
 
-# app.include_router(createAccount.router)
-# app.include_router(deleteAccount.router)
-# app.include_router(updateAccount.router)
-# app.include_router(readAccount.router)
+app.include_router(createAccount.router)
+app.include_router(deleteAccount.router)
+app.include_router(updateAccount.router)
+app.include_router(readAccount.router)
 
-# app.include_router(createQuizQuestion.router)
-# app.include_router(deleteQuizQuestion.router)
-# app.include_router(readQuizQuestion.router)
-# app.include_router(createQuizAnswer.router)
+app.include_router(createQuizQuestion.router)
+app.include_router(deleteQuizQuestion.router)
+app.include_router(readQuizQuestion.router)
+app.include_router(createQuizAnswer.router)
 
 # app.include_router(createCalculateGrade.router)
 
@@ -33,6 +33,8 @@ def startup_event():
     print("--- Pra-pemrosesan Data Selesai. Aplikasi Siap. ---")
     print("--- Membuat dan Mengisi Database... ---")
     setup_database() # Panggil fungsi setup database
+    print("--- Menghitung Nilai Mahasiswa... ---")
+    calculate_all_grades()  # Panggil fungsi perhitungan nilai
     print("--- Aplikasi Siap. ---")
 
 # Definisikan variabel global untuk path
@@ -82,7 +84,7 @@ def prepare_data():
 
     # Tambahkan kolom kosong untuk Quiz_Exam_Completion_Rate dan Final Grade
     data_student['Quiz_Exam_Completion_Rate'] = 0  
-    data_student['Final_Grade'] = 0 
+    data_student['Final_Grade'] = 'E'
 
     file_name_student = 'data_student.csv'
     data_student.to_csv(os.path.join(folder_path, file_data_students), index=False)
@@ -194,7 +196,7 @@ def setup_database():
                             Participation_in_Discussions=str(record['Participation_in_Discussions']),
                             Quiz_Exam_Completion_Rate=int(record['Quiz_Exam_Completion_Rate']),
                             Attendance_Rate_percent=int(record['Attendance_Rate_percent']),
-                            Final_Grade=int(record['Final_Grade'])
+                            Final_Grade=str(record['Final_Grade'])
                         )
                         db.add(student)
                     except Exception as e:
@@ -228,5 +230,20 @@ def setup_database():
         import traceback
         traceback.print_exc()
         raise e
+    finally:
+        db.close()
+
+def calculate_all_grades():
+    """Fungsi untuk menghitung semua nilai"""
+    db = SessionLocal()
+    try:
+        # Hitung nilai untuk semua quiz
+        quiz_list = [("Q1", "MATH101"), ("Q2", "MATH101"), ("E1", "MATH101")]
+        
+        for quiz_id, course_id in quiz_list:
+            print(f"\n📊 Menghitung nilai untuk {quiz_id}...")
+            calculate_grades_for_all_students(db, quiz_id, course_id)
+        
+        print("\n✅ Semua nilai telah dihitung dan diperbarui")
     finally:
         db.close()

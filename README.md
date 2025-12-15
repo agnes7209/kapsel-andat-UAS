@@ -1,4 +1,37 @@
 # UAS-Kapita-Selekta-Analitika-Data
+STRUKTUR FOLDER:
+KAPSEL-ANDAT-UAS
+    modules
+        accounts
+            routers
+                createAccount.py
+                deleteAccount.py
+                readAccount.py
+                updateAccount.py
+            schema
+                schemas.py
+            models.py
+        quiz
+            routers
+                createQuizAnswer.py
+                createQuizQuestion.py
+                deleteQuizQuestion.py
+                readQuizQuestion.py
+                updateQuiz.py
+            schema
+                schemas.py
+            models.py       
+        students
+            routers
+            schema
+                schemas.py
+            models.py
+        tests
+    quiz_questionaries (folder berisi soal terhubung dengan GitHub)
+    database.py
+    main.py
+
+Kotret:
 e-learning-activity-tracker/
 config/               // Shared: Koneksi DB, JWT Config (Dikerjakan bersama atau oleh Tim 1/Leader)
 middlewares/          // Shared: JWT Middleware (Dikerjakan Tim 1)
