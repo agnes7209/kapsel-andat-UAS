@@ -1,5 +1,5 @@
 # UAS-Kapita-Selekta-Analitika-Data
-STRUKTUR FOLDER:
+STRUKTUR FOLDER
 KAPSEL-ANDAT-UAS
     modules
         accounts

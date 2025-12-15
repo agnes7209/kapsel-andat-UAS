@@ -34,7 +34,7 @@ class StudentGradeModel(Base):
     Student_ID = Column(String(10), ForeignKey('data_students.Student_ID'), nullable=False)
     Quiz_ID = Column(String(20), nullable=True)
     Course_ID = Column(String(10), nullable=True)
-    Grade = Column(Float, nullable=True)  # Changed to Float for decimal values
+    Grade = Column(Integer, nullable=True)  
 
     # Relationship to StudentModel
     student = relationship("StudentModel", back_populates="grades")
@@ -70,7 +70,124 @@ class QuizSolutionModel(Base):
     Correct_Answer = Column(String(255), nullable=False)
     Solution_Text = Column(Text, nullable=True)
 
-# Fungsi untuk menghitung Quiz_Exam_Completion_Rate
+# Fungsi untuk menghitung nilai per quiz di QuizAnswersModel(log_quizanswer)
+def calculate_and_save_grades(db_session: Session, 
+                            quiz_id: str, 
+                            course_id: str = "Kalkulus",
+                            student_id: str = None):
+    """
+    Menghitung dan menyimpan nilai quiz ke database
+    
+    Parameters:
+    - student_id: Jika None, hitung untuk semua mahasiswa
+    - quiz_id: Q1, Q2, atau E1
+    - course_id: Default "Kalkulus"
+    """
+    try:
+        # Tentukan mahasiswa mana yang akan dihitung
+        if student_id:
+            students_query = db_session.query(StudentModel.Student_ID).filter(
+                StudentModel.Student_ID == student_id
+            )
+            print(f"📊 Menghitung nilai {quiz_id} untuk mahasiswa {student_id}...")
+        else:
+            students_query = db_session.query(StudentModel.Student_ID)
+            print(f"📊 Menghitung nilai {quiz_id} untuk semua mahasiswa...")
+        
+        students = students_query.all()
+        
+        if not students:
+            print(f"⚠️ Tidak ada mahasiswa ditemukan")
+            return 0
+        
+        total_calculated = 0
+        total_questions = 20  # Semua quiz ada 20 soal
+        
+        # Tentukan model solusi
+        if quiz_id == "Q1":
+            solution_model = SolutionQ1
+        elif quiz_id == "Q2":
+            solution_model = SolutionQ2
+        elif quiz_id == "E1":
+            solution_model = SolutionE1
+        else:
+            print(f"⚠️ Quiz ID {quiz_id} tidak dikenali")
+            return 0
+        
+        # Ambil semua solusi sekaligus (lebih efisien)
+        solutions = db_session.query(solution_model).all()
+        if not solutions:
+            print(f"⚠️ Tidak ada solusi untuk quiz {quiz_id}")
+            return 0
+        
+        # Buat dictionary solusi untuk akses cepat
+        solution_dict = {sol.Number: sol.Solution.strip().lower() for sol in solutions}
+        
+        for (student_id,) in students:
+            # Ambil semua jawaban mahasiswa untuk quiz ini
+            student_answers = db_session.query(QuizAnswersModel).filter(
+                and_(
+                    QuizAnswersModel.Student_ID == student_id,
+                    QuizAnswersModel.Quiz_ID == quiz_id,
+                    QuizAnswersModel.Course_ID == course_id
+                )
+            ).all()
+            
+            # Hitung nilai
+            if not student_answers:
+                grade = 0  # Tidak ada jawaban
+            else:
+                correct_count = 0
+                for answer in student_answers:
+                    question_num = answer.Question_Number
+                    if question_num in solution_dict:
+                        student_answer = answer.Answer.strip().lower() if answer.Answer else ""
+                        if student_answer == solution_dict[question_num]:
+                            correct_count += 1
+                
+                grade = int((correct_count / total_questions) * 100)
+            
+            # Simpan atau update ke database
+            existing_grade = db_session.query(StudentGradeModel).filter(
+                and_(
+                    StudentGradeModel.Student_ID == student_id,
+                    StudentGradeModel.Quiz_ID == quiz_id,
+                    StudentGradeModel.Course_ID == course_id
+                )
+            ).first()
+            
+            if existing_grade:
+                existing_grade.Grade = grade
+            else:
+                new_grade = StudentGradeModel(
+                    Student_ID=student_id,
+                    Quiz_ID=quiz_id,
+                    Course_ID=course_id,
+                    Grade=grade
+                )
+                db_session.add(new_grade)
+            
+            total_calculated += 1
+        
+        # Commit sekali untuk semua perubahan
+        db_session.commit()
+        
+        print(f"✅ {total_calculated} nilai {quiz_id} telah dihitung dan disimpan")
+        return total_calculated
+        
+    except Exception as e:
+        db_session.rollback()
+        print(f"❌ Error menghitung nilai {quiz_id}: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return 0
+    # Hitung untuk semua mahasiswa
+        # calculate_and_save_grades(db, "Q1", "Kalkulus")
+
+    # Hitung untuk satu mahasiswa
+        # calculate_and_save_grades(db, "Q1", "Kalkulus", "S00001")
+
+# Fungsi untuk menghitung Quiz_Exam_Completion_Rate di data_students
 def calculate_completion_rate(db_session: Session, student_id: str) -> int:
     """
     Menghitung persentase quiz dan exam yang telah diikuti mahasiswa
@@ -96,8 +213,7 @@ def calculate_completion_rate(db_session: Session, student_id: str) -> int:
     except Exception as e:
         print(f"❌ Error dalam calculate_completion_rate: {str(e)}")
         return 0
-
-# Fungsi untuk menghitung Final_Grade berdasarkan semua nilai quiz
+# Fungsi untuk menghitung Final_Grade di data_students berdasarkan semua nilai quiz
 def calculate_final_grade(db_session: Session, student_id: str) -> str:
     """
     Menghitung nilai akhir (A/B/C/D/E) berdasarkan semua nilai quiz
@@ -108,17 +224,28 @@ def calculate_final_grade(db_session: Session, student_id: str) -> str:
             .filter(
                 and_(
                     StudentGradeModel.Student_ID == student_id,
-                    StudentGradeModel.Is_Calculated == True
+                    StudentGradeModel.Course_ID == "Kalkulus",
+                    StudentGradeModel.Quiz_ID.in_(["Q1", "Q2", "E1"])
                 )
             )\
             .all()
         
         if not grades:
+            print(f"⚠️ Mahasiswa {student_id} belum memiliki nilai quiz")
             return "E"  # Default grade jika tidak ada nilai
         
+        # Filter hanya nilai yang tidak NULL
+        valid_grades = [grade[0] for grade in grades if grade[0] is not None]
+        
+        if not valid_grades:
+            print(f"⚠️ Mahasiswa {student_id} memiliki nilai NULL semua")
+            return "E"
+
         # Hitung rata-rata semua nilai quiz (bobot sama)
-        total_grade = sum([grade[0] for grade in grades if grade[0] is not None])
-        average_grade = total_grade / len(grades)
+        total_grade = sum(valid_grades)
+        average_grade = total_grade / len(valid_grades)
+        
+        print(f"📊 Perhitungan {student_id}: Total={total_grade}, Rata-rata={average_grade:.2f}, Jumlah quiz={len(valid_grades)}")
         
         # Konversi ke Grade Letter berdasarkan range
         if average_grade >= 77:
@@ -135,254 +262,65 @@ def calculate_final_grade(db_session: Session, student_id: str) -> str:
     except Exception as e:
         print(f"❌ Error dalam calculate_final_grade: {str(e)}")
         return "E"
-
-# Fungsi untuk memperbarui nilai student di tabel data_students
-def update_student_grades(db_session: Session, student_id: str):
+# Fungsi untuk memperbarui kolom-kolom di tabel data_students
+def update_student_grades(db_session: Session, student_id: str = None):
     """
-    Memperbarui Quiz_Exam_Completion_Rate dan Final_Grade untuk mahasiswa
+    Memperbarui Quiz_Exam_Completion_Rate dan Final_Grade
+    - Jika student_id diberikan: update hanya mahasiswa tersebut
+    - Jika student_id=None: update semua mahasiswa
     """
     try:
-        # Hitung completion rate
-        completion_rate = calculate_completion_rate(db_session, student_id)
-        
-        # Hitung final grade
-        final_grade = calculate_final_grade(db_session, student_id)
-        
-        # Update data di tabel students
-        student = db_session.query(StudentModel).filter(
-            StudentModel.Student_ID == student_id
-        ).first()
-        
-        if student:
-            student.Quiz_Exam_Completion_Rate = completion_rate
-            student.Final_Grade = final_grade
-            db_session.commit()
-            print(f"✅ Data student {student_id} diperbarui: Completion={completion_rate}%, Grade={final_grade}")
+        if student_id:
+            # Update hanya satu mahasiswa
+            students_query = db_session.query(StudentModel).filter(
+                StudentModel.Student_ID == student_id
+            )
+            print(f"⏳ Memperbarui nilai untuk mahasiswa {student_id}...")
         else:
-            print(f"❌ Student {student_id} tidak ditemukan")
-            
-    except Exception as e:
-        db_session.rollback()
-        print(f"❌ Error dalam update_student_grades: {str(e)}")
-
-# Fungsi untuk memperbarui semua student
-def update_all_students_grades(db_session: Session):
-    """
-    Memperbarui nilai untuk semua mahasiswa
-    """
-    try:
-        # Ambil semua student
-        students = db_session.query(StudentModel).all()
+            # Update semua mahasiswa
+            students_query = db_session.query(StudentModel)
+            print(f"⏳ Memperbarui nilai untuk semua mahasiswa...")
         
-        print(f"⏳ Memperbarui nilai untuk {len(students)} mahasiswa...")
+        students = students_query.all()
+        
+        if not students:
+            print(f"⚠️ Tidak ada mahasiswa ditemukan")
+            return
+        
+        updated_count = 0
         
         for student in students:
-            update_student_grades(db_session, student.Student_ID)
+            # Hitung completion rate
+            completion_rate = calculate_completion_rate(db_session, student.Student_ID)
             
-        print(f"✅ Semua nilai mahasiswa telah diperbarui")
+            # Hitung final grade
+            final_grade = calculate_final_grade(db_session, student.Student_ID)
+            
+            # Update data student
+            student.Quiz_Exam_Completion_Rate = completion_rate
+            student.Final_Grade = final_grade
+            
+            updated_count += 1
         
-    except Exception as e:
-        print(f"❌ Error dalam update_all_students_grades: {str(e)}")
-
-# Method untuk menghitung grade otomatis dengan perbaikan
-def calculate_grade(db_session, student_id, quiz_id, course_id):
-    """
-    Menghitung grade berdasarkan jawaban siswa dan solusi
-    """
-    try:
-        print(f"\n=== Memulai perhitungan grade untuk {student_id}, Quiz: {quiz_id} ===")
-        
-        # Ambil jawaban siswa dari database
-        student_answers = db_session.query(QuizAnswersModel).filter(
-            and_(
-                QuizAnswersModel.Student_ID == student_id,
-                QuizAnswersModel.Quiz_ID == quiz_id,
-                QuizAnswersModel.Course_ID == course_id
-            )
-        ).order_by(QuizAnswersModel.Question_Number).all()
-        
-        print(f"Jumlah jawaban ditemukan: {len(student_answers)}")
-        
-        if not student_answers:
-            print(f"⚠️ Tidak ditemukan jawaban untuk student_id={student_id}, quiz_id={quiz_id}")
-            # Tandai sebagai tidak dikerjakan tapi buat record dengan nilai 0
-            create_empty_grade_record(db_session, student_id, quiz_id, course_id)
-            return 0
-        
-        # Pilih model solusi berdasarkan Quiz_ID
-        solution_model = None
-        if quiz_id == "Q1":
-            solution_model = SolutionQ1
-            print("Menggunakan solusi Q1")
-        elif quiz_id == "Q2":
-            solution_model = SolutionQ2
-            print("Menggunakan solusi Q2")
-        elif quiz_id == "E1":
-            solution_model = SolutionE1
-            print("Menggunakan solusi E1")
-        else:
-            print(f"❌ Quiz ID {quiz_id} tidak dikenali")
-            return 0
-        
-        # Ambil solusi dari database
-        solutions = db_session.query(solution_model).order_by(solution_model.Number).all()
-        
-        print(f"Jumlah solusi ditemukan: {len(solutions)}")
-        
-        if not solutions:
-            print(f"❌ Tidak ditemukan solusi untuk quiz_id={quiz_id}")
-            return 0
-        
-        # Hitung persentase benar
-        correct_count = 0
-        total_questions = len(solutions)
-        
-        # Buat dictionary untuk solusi agar lebih mudah diakses
-        solution_dict = {sol.Number: sol.Solution for sol in solutions}
-        
-        print(f"\nMembandingkan {len(student_answers)} jawaban dengan {len(solutions)} solusi:")
-        
-        for answer in student_answers:
-            if answer.Question_Number in solution_dict:
-                # Bandingkan jawaban siswa dengan solusi
-                student_answer = str(answer.Answer).strip().lower() if answer.Answer else ""
-                correct_solution = str(solution_dict[answer.Question_Number]).strip().lower()
-                
-                # Debug output hanya untuk beberapa soal pertama
-                if answer.Question_Number <= 5:
-                    print(f"  Soal {answer.Question_Number}: Siswa='{student_answer}', Kunci='{correct_solution}'")
-                
-                if student_answer and student_answer == correct_solution:
-                    correct_count += 1
-        
-        # Hitung grade dalam persentase
-        grade = (correct_count / total_questions) * 100 if total_questions > 0 else 0
-        
-        # Bulatkan ke 2 desimal
-        grade = round(grade, 2)
-        
-        print(f"\nHasil: {correct_count} benar dari {total_questions} soal = {grade}%")
-        
-        # Cek apakah grade sudah ada
-        existing_grade = db_session.query(StudentGradeModel).filter(
-            and_(
-                StudentGradeModel.Student_ID == student_id,
-                StudentGradeModel.Quiz_ID == quiz_id,
-                StudentGradeModel.Course_ID == course_id
-            )
-        ).first()
-        
-        if existing_grade:
-            # Update grade yang sudah ada
-            existing_grade.Grade = grade
-            existing_grade.Is_Calculated = True
-            print(f"✓ Grade diperbarui di database")
-        else:
-            # Buat record grade baru
-            new_grade = StudentGradeModel(
-                Student_ID=student_id,
-                Quiz_ID=quiz_id,
-                Course_ID=course_id,
-                Grade=grade,
-                Is_Calculated=True
-            )
-            db_session.add(new_grade)
-            print(f"✓ Grade baru ditambahkan ke database")
-        
-        # Commit perubahan ke database
+        # COMMIT SEKALI untuk semua perubahan
         db_session.commit()
         
-        # Update nilai student setelah menghitung grade
-        update_student_grades(db_session, student_id)
-        
-        print(f"✓ Grade berhasil dihitung untuk {student_id}: {grade}%\n")
-        return grade
+        if student_id:
+            print(f"✅ Nilai mahasiswa {student_id} diperbarui: Completion={completion_rate}%, Grade={final_grade}")
+        else:
+            print(f"✅ {updated_count} nilai mahasiswa telah diperbarui")
         
     except Exception as e:
-        print(f"❌ Error dalam calculate_grade: {str(e)}")
+        db_session.rollback()
+        if student_id:
+            print(f"❌ Error memperbarui nilai mahasiswa {student_id}: {str(e)}")
+        else:
+            print(f"❌ Error memperbarui nilai semua mahasiswa: {str(e)}")
         import traceback
         traceback.print_exc()
-        db_session.rollback()
-        return 0
+    # Update satu mahasiswa
+        # update_student_grades(db, "S00001")
 
-def create_empty_grade_record(db_session, student_id, quiz_id, course_id):
-    """
-    Membuat record grade dengan nilai 0 untuk quiz yang tidak dikerjakan
-    """
-    try:
-        # Cek apakah record sudah ada
-        existing_grade = db_session.query(StudentGradeModel).filter(
-            and_(
-                StudentGradeModel.Student_ID == student_id,
-                StudentGradeModel.Quiz_ID == quiz_id,
-                StudentGradeModel.Course_ID == course_id
-            )
-        ).first()
-        
-        if not existing_grade:
-            new_grade = StudentGradeModel(
-                Student_ID=student_id,
-                Quiz_ID=quiz_id,
-                Course_ID=course_id,
-                Grade=0.0,
-                Is_Calculated=True
-            )
-            db_session.add(new_grade)
-            db_session.commit()
-            print(f"✓ Record grade kosong dibuat untuk {student_id}, quiz {quiz_id}")
-            
-    except Exception as e:
-        print(f"❌ Error dalam create_empty_grade_record: {str(e)}")
-        db_session.rollback()
+    # Update semua mahasiswa 
+        # update_student_grades(db)  # atau update_student_grades(db, None)
 
-def calculate_grades_for_all_students(db_session, quiz_id, course_id):
-    """
-    Menghitung grade untuk semua siswa yang telah mengerjakan quiz tertentu
-    """
-    try:
-        # Ambil semua student_id dari tabel students
-        students = db_session.query(StudentModel.Student_ID).all()
-        
-        print(f"Menghitung grade untuk {len(students)} siswa pada quiz {quiz_id}...")
-        
-        results = []
-        for (student_id,) in students:
-            # Untuk setiap student, hitung grade (akan membuat record dengan nilai 0 jika tidak ada jawaban)
-            grade = calculate_grade(db_session, student_id, quiz_id, course_id)
-            results.append({
-                'student_id': student_id,
-                'grade': grade
-            })
-        
-        # Update semua nilai student setelah menghitung semua grade
-        update_all_students_grades(db_session)
-        
-        return results
-        
-    except Exception as e:
-        print(f"Error dalam calculate_grades_for_all_students: {str(e)}")
-        return []
-
-# Event listener untuk memperbarui nilai otomatis ketika ada perubahan di QuizAnswersModel
-@event.listens_for(QuizAnswersModel, 'after_insert')
-@event.listens_for(QuizAnswersModel, 'after_update')
-@event.listens_for(QuizAnswersModel, 'after_delete')
-def update_grades_on_answer_change(mapper, connection, target):
-    """
-    Memperbarui nilai secara otomatis ketika ada perubahan pada jawaban quiz
-    """
-    db_session = Session(bind=connection)
-    try:
-        student_id = target.Student_ID
-        quiz_id = target.Quiz_ID
-        course_id = target.Course_ID
-        
-        print(f"⏳ Memperbarui nilai setelah perubahan jawaban untuk {student_id}, quiz {quiz_id}")
-        
-        # Hitung ulang grade untuk quiz ini
-        calculate_grade(db_session, student_id, quiz_id, course_id)
-        
-    except Exception as e:
-        print(f"❌ Error dalam update_grades_on_answer_change: {str(e)}")
-    finally:
-        db_session.close()
