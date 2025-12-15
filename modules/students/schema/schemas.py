@@ -1,5 +1,10 @@
 from pydantic import BaseModel
 
+class IndGrade(BaseModel):
+    student_id: str
+    quiz_id: str
+    course_id: str
+
 class IndGradeResponse(BaseModel):
     student_id: str
     quiz_id: str
@@ -11,6 +16,10 @@ class ResponseIndGradeModel(BaseModel):
     message: str
     data: IndGradeResponse
 
+
+class AllGrade(BaseModel):
+    quiz_id: str
+    course_id: str
 
 class AllGradeResponse(BaseModel):
     quiz_id: str
